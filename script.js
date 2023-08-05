@@ -9,8 +9,8 @@ let foodX;
 let foodY;
 let snakeX = 5, snakeY = 10;
 let snakeBody = [];
-let coordinatX = 0;
-let coordinatY = 0;
+//let coordinatX = 0;
+//let coordinatY = 0;
 let setIntervalId;
 let score = 0;
 
@@ -18,40 +18,51 @@ let score = 0;
 let highScore = localStorage.getItem("high-score") || 0; //получаем highScore из local storage
 highScoreElement.innerText = `High Score: ${highScore}`
 
-let protocol = [{event: "start game", step: 0}];
+let protocol = [{event: "start game", step: 0, move: ""}];
 
 
+const setEvent=(newEvent) => {
+    let lastMove= protocol[protocol.length-1];
+
+    if(lastMove.event!=="start game") {
+        lastMove={...lastMove, event: newEvent}
+        protocol.push(lastMove)
+    }
+
+}
 
 const changeFoodPosition = () => {
     //передаем случайное значение 0-30 (вернее 1-30) как позицию еды
     foodX = Math.floor(Math.random() * 30) + 1;
     foodY = Math.floor(Math.random() * 30) + 1;
+    setEvent("new food coordinates: " + foodX + foodY);
 }
 
 
 const handleGameOver = () => {
     //очищение таймера и перезагрузка страницы на game over
     clearInterval(setIntervalId)
-    alert("Game Over! Press OK to play again...");
+    alert("Game Over! Press OK to play again...")
+    localStorage.setItem("protocol", JSON.stringify(protocol))
     location.reload() // !!!!!!!!!!!!
 }
 
 
 const changeDirection = (e) => {
-    const{event} = protocol[protocol.length - 1];
+    const {event, move, step} = protocol[protocol.length - 1];
 
-    if (e.key === "ArrowUp" && event !=="Move Y") {
-        protocol.push({event: "Move Y", step: -1});
-    }else if (e.key === "ArrowDown" && event !=="Move Y") {
-        protocol.push({event: "Move Y", step: 1});
-    } else if (e.key === "ArrowLeft" && event !=="Move X") {
-        protocol.push({event: "Move X", step: -1});
-    } else if (e.key === "ArrowRight" && event !=="Move X") {
-        protocol.push({event: "Move X", step: 1});
+    if (e.key === "ArrowUp" && move !== "Y") {
+        protocol.push({event: "", move: "Y", step: -1,});
+    } else if (e.key === "ArrowDown" && move !== "Y") {
+        protocol.push({event: "", move: "Y", step: 1});
+    } else if (e.key === "ArrowLeft" && move !== "X") {
+        protocol.push({event: "",move: "X", step: -1});
+    } else if (e.key === "ArrowRight" && move !== "X") {
+        protocol.push({event: "", move: "X", step: 1});
     }
 
     //изменяем значение coordinat на основе нажатия нужной нам клавиши   !!! coordinatY !=1 ____нет обратному ходу)
-   /** if (e.key === "ArrowUp" && coordinatY != 1) {
+    /** if (e.key === "ArrowUp" && coordinatY != 1) {
         coordinatX = 0;
         coordinatY = -1;
     } else if (e.key === "ArrowDown" && coordinatY != -1) {
@@ -77,7 +88,32 @@ const initGame = () => {
 
 
     //если змея ударила еду
+
     if (snakeX === foodX && snakeY === foodY) {
+        setEvent("food eaten")
+    }
+
+    const {event, move, step} = protocol[protocol.length - 1];
+    if (event === "food eaten") {
+        snakeBody.push([foodX, foodY]); //добавляем в массив тела змеи _ позицию еды
+        changeFoodPosition();
+        setEvent("");
+
+        score++;//увеличиваем score на единицу
+        highScore = score >= highScore ? score : highScore;
+        localStorage.setItem("high-score", highScore);
+        highScoreElement.innerText = `High Score: ${highScore}`
+        scoreElement.innerText = `Score: ${score}`
+    }
+
+    if(move === "Y") {
+        snakeY += step;
+    } else if(move === "X"){
+        snakeX += step;
+    }
+
+
+    /**if (snakeX === foodX && snakeY === foodY) {
         changeFoodPosition();
         snakeBody.push([foodX, foodY]); //добавляем в массив тела змеи _ позицию еды
 
@@ -86,7 +122,7 @@ const initGame = () => {
         localStorage.setItem("high-score", highScore);
         highScoreElement.innerText = `High Score: ${highScore}`
         scoreElement.innerText = `Score: ${score}`
-    }
+    }*/
 
     for (let i = snakeBody.length - 1; i > 0; i--) {
         //сдвигаем назад значение элементов в змеиное тело на 1
@@ -98,15 +134,15 @@ const initGame = () => {
 
     //обновляем позицию головы змем на основе настоящего coordinat  //ДВИЖЕНИЕ ПОШЛО
     /**snakeX += coordinatX;
-    snakeY += coordinatY;*/
+     snakeY += coordinatY;*/
 
 
-    if(protocol[protocol.length - 1].event === "Move X") {
-        snakeX+=protocol[protocol.length - 1].step;
-    } else if(protocol[protocol.length - 1].event === "Move Y") {
+    /**if (protocol[protocol.length - 1].event === "Move X") {
+        snakeX += protocol[protocol.length - 1].step;
+    } else if (protocol[protocol.length - 1].event === "Move Y") {
         snakeY += protocol[protocol.length - 1].step;
     }
-
+*/
 
     //проверка, если голова змеи за стеной. Если так, to gameOver=true
     if (snakeX <= 0 || snakeX > 30 || snakeY <= 0 || snakeY > 30) {
