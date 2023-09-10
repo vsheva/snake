@@ -10,16 +10,17 @@ function millisecondsToMinutesAndSeconds(milliseconds) {
     var seconds = ((milliseconds % 60000) / 1000).toFixed(0);
     return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
 }
+
 const levels = [
-    {
-        field: 15,
-        time: 10000, // 00:10
-        timeStep: 250,
-        food: 2,
-        obstacles: [],
-        bonuses: [],
-        maxScores: 2,
-    },
+    // {
+    //     field: 15,
+    //     time: 20000, // 00:10
+    //     timeStep: 250,
+    //     food: 2,
+    //     obstacles: [],
+    //     bonuses: [],
+    //     maxScores: 2,
+    // },
     {
         field: 30,
         time: 40000,
@@ -27,8 +28,8 @@ const levels = [
         food: 8,
         obstacles: ["fix", "fix"],
         bonuses: [
-            { type: "points", value: 10, startFood: 3 },
-            { type: "points", value: 20, startFood: 6 },
+            {type: "points", value: 10, startFood: 3},
+            {type: "points", value: 20, startFood: 6},
         ],
         maxScores: 39,
     },
@@ -43,6 +44,8 @@ let screen = "";
 let foodX;
 let foodY;
 const obstacles = [];
+let obstacleSpeed = 0;
+let obstacleStep = 1;
 let obstacleX;
 let obstacleY;
 let bonusX;
@@ -67,11 +70,11 @@ let time = 0;
 const protocol = [];
 
 const setEvent = (newEvent, newValue) => {
-    const newRecord = { time: time, event: newEvent, value: newValue };
+    const newRecord = {time: time, event: newEvent, value: newValue};
     if (isTime) {
         protocol.push(newRecord);
         if (newRecord.event === "game over") isTime = false;
-    } else protocol.unshift(newRecord);
+    } else protocol.unshift(newRecord); //!!!
 };
 
 const getFreeCell = (bookedCells) => {
@@ -81,17 +84,15 @@ const getFreeCell = (bookedCells) => {
         freeCellX = Math.floor(Math.random() * field) + 1;
         freeCellY = Math.floor(Math.random() * field) + 1;
     } while (
-        bookedCells.every(
-            (coord) => coord[0] === freeCellX || coord[1] === freeCellY
-        )
+        bookedCells.every((el) => el[0] === freeCellX || el[1] === freeCellY)
         );
-
+    //console.log("[freeCellX, freeCellY]", [freeCellX, freeCellY])
     return [freeCellX, freeCellY];
 };
 
 const setLevel = () => {
-    protocol.push({ time: time, event: "start game", value: level });
-    field = levels[level - 1].field;
+    protocol.push({time: time, event: "start game", value: level});
+    field = levels[level - 1].field; // !!!
     foodLevel = levels[level - 1].food;
     levelTime = levels[level - 1].time;
     timeStep = levels[level - 1].timeStep;
@@ -99,22 +100,26 @@ const setLevel = () => {
 };
 
 const counter = () => {
+
     // проверка генерации еды
-    currentFood = protocol.filter(
-        (notice) => notice.event === "food eaten"
-    ).length;
+    currentFood = protocol.filter((notice) => notice.event === "food eaten").length;
     leftToEat = foodLevel - currentFood;
     if (leftToEat === 0) {
         setEvent("level is complete", level);
         isLevelComplete = true;
     }
+
     // проверка генерации бонусов
     if (levels[level - 1].bonuses.length !== 0) {
         let bonusesList = levels[level - 1].bonuses.map((bonus) => bonus.startFood);
         bonusesList = bonusesList.map((li) => {
-            return { start: li, end: li + 2 };
+            return {start: li, end: li + 2};
         });
+        //console.log(bonusesList)  _______     [{start: 3, end: 5},{start: 6, end: 8}]
+
         for (let i = 0; i < bonusesList.length; i++) {
+            //console.log(bonusesList[i]) __________{start: 3, end: 5}  {start: 6, end: 8}
+            //console.log(currentFood)_________________ после первого уровня currentFood= 2
             if (currentFood === bonusesList[i].start) {
                 isBonus = true;
                 currentBonus = i;
@@ -128,6 +133,9 @@ const counter = () => {
 };
 
 const setFoodPosition = () => {
+    //console.log(foodLevel) _________________________ после первого уровня foodLevel=2, потом 8
+    //console.log(obstacles)   _______________[{X: 24, Y: 3},{X: 5, Y: 12}]
+    //console.log(snakeBody)  _______________[[5, 10]]
     if (currentFood !== foodLevel - 1) {
         [foodX, foodY] = getFreeCell(snakeBody.concat(obstacles));
         setEvent("set food", foodX + ":" + foodY);
@@ -139,11 +147,40 @@ const setObstaclePosition = () => {
     booking.push(snakeBody);
     for (let i = 0; i < levels[level - 1].obstacles.length; i++) {
         [obstacleX, obstacleY] = getFreeCell(booking);
-        obstacles.push({ X: obstacleX, Y: obstacleY });
+        obstacles.push({X: obstacleX, Y: obstacleY});
         setEvent("set fix obstacle", obstacleX + ":" + obstacleY);
         booking.push([obstacleX, obstacleY]);
     }
 };
+
+const moveObstacle = () => {
+    obstacleSpeed += timeStep;
+
+    if (obstacleSpeed / timeStep === 5) {
+        for (let i = 0; i < obstacles.length; i++) {
+            if (obstacles[i].X === field) {
+                obstacleStep = -1
+            }
+            if (obstacles[i].X <= 1) {
+                obstacleStep = 1
+            }
+
+            obstacles[i].X += obstacleStep;
+            // if (obstacles[i].X <= 0 || obstacles[i].X > field) {
+            //obstacles[i].X=field;
+            //1) движется вправо - к координате x прибавить единицу
+            //2) коснулось бортика - поменять 1 на -1
+            //3)влево движется - от координаты x отнять единицу
+            //4) коснулось бортика - поменять -1 на 1
+            //5) движется вправо - к координате x прибавить единицу
+            //obstacles[i].X=field
+            //obstacles[i].X = obstacles[i].X - 1;
+            //}
+        }
+        obstacleSpeed = 0;
+    }
+}
+
 
 const setBonusPosition = () => {
     [bonusX, bonusY] = getFreeCell(snakeBody.concat(obstacles, [foodX, foodY]));
@@ -151,16 +188,16 @@ const setBonusPosition = () => {
 };
 
 const changeDirection = (e) => {
-    const { event } = protocol[protocol.length - 1];
+    const {event} = protocol[protocol.length - 1];
     let newEvent;
     if (e.key === "ArrowUp" && event !== "Y") {
-        newEvent = { time: time, event: "Y", value: -1 };
+        newEvent = {time: time, event: "Y", value: -1};
     } else if (e.key === "ArrowDown" && event !== "Y") {
-        newEvent = { time: time, event: "Y", value: 1 };
+        newEvent = {time: time, event: "Y", value: 1};
     } else if (e.key === "ArrowLeft" && event !== "X") {
-        newEvent = { time: time, event: "X", value: -1 };
+        newEvent = {time: time, event: "X", value: -1};
     } else if (e.key === "ArrowRight" && event !== "X") {
-        newEvent = { time: time, event: "X", value: 1 };
+        newEvent = {time: time, event: "X", value: 1};
     } else {
         return;
     }
@@ -170,7 +207,7 @@ const changeDirection = (e) => {
 
 controls.forEach((key) => {
     key.addEventListener("click", () =>
-        changeDirection({ key: key.dataset.key })
+        changeDirection({key: key.dataset.key})
     );
 });
 /*
@@ -267,7 +304,7 @@ const moveSnake = () => {
 };
 
 const protocolExecutor = () => {
-    const { value, event } = protocol[protocol.length - 1];
+    const {value, event} = protocol[protocol.length - 1];
     switch (event) {
         case "food eaten":
             snakeBody.push([]);
@@ -344,6 +381,7 @@ setBonusPosition();
 setIntervalId = setInterval(() => {
     // перемещение змейки по игровому полю
     moveSnake();
+    moveObstacle();
     // проверка всех предусмотренных игрой ограничений
     checkingRestrictions();
     // проверка доступных игроку взаимодействий
