@@ -5,14 +5,14 @@ const timeElement = document.querySelector(".time");
 const levelElement = document.querySelector(".level");
 const controls = document.querySelectorAll(".controls i");
 
+
 function millisecondsToMinutesAndSeconds(milliseconds) {
     var minutes = Math.floor(milliseconds / 60000);
     var seconds = ((milliseconds % 60000) / 1000).toFixed(0);
     return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
 }
 
-const levels = [
-    // {
+const levels = [// {
     //     field: 15,
     //     time: 20000, // 00:10
     //     timeStep: 250,
@@ -26,15 +26,13 @@ const levels = [
         time: 40000,
         timeStep: 125,
         food: 8,
+        //obstacles: ["fix", "fix", "x", "x", "y", "y", "y"],
         obstacles: ["fix", "fix"],
-        bonuses: [
-            {type: "points", value: 10, startFood: 3},
-            {type: "points", value: 20, startFood: 6},
-        ],
+        bonuses: [{type: "points", value: 10, startFood: 3}, {type: "points", value: 20, startFood: 6},],
         maxScores: 39,
-    },
-];
+    },];
 const maxLevel = levels.length;
+let step = [1];
 let level = 1;
 let field;
 let foodLevel;
@@ -80,12 +78,13 @@ const setEvent = (newEvent, newValue) => {
 const getFreeCell = (bookedCells) => {
     let freeCellX;
     let freeCellY;
+
+
     do {
         freeCellX = Math.floor(Math.random() * field) + 1;
+
         freeCellY = Math.floor(Math.random() * field) + 1;
-    } while (
-        bookedCells.every((el) => el[0] === freeCellX || el[1] === freeCellY)
-        );
+    } while (bookedCells.every((el) => el[0] === freeCellX || el[1] === freeCellY));
     //console.log("[freeCellX, freeCellY]", [freeCellX, freeCellY])
     return [freeCellX, freeCellY];
 };
@@ -153,33 +152,40 @@ const setObstaclePosition = () => {
     }
 };
 
+
 const moveObstacle = () => {
     obstacleSpeed += timeStep;
 
     if (obstacleSpeed / timeStep === 5) {
+
         for (let i = 0; i < obstacles.length; i++) {
             if (obstacles[i].X === field) {
-                obstacleStep = -1
-            }
-            if (obstacles[i].X <= 1) {
-                obstacleStep = 1
+                step[i] = -1
+                //console.log("if", i, step)
             }
 
-            obstacles[i].X += obstacleStep;
-            // if (obstacles[i].X <= 0 || obstacles[i].X > field) {
-            //obstacles[i].X=field;
-            //1) движется вправо - к координате x прибавить единицу
-            //2) коснулось бортика - поменять 1 на -1
-            //3)влево движется - от координаты x отнять единицу
-            //4) коснулось бортика - поменять -1 на 1
-            //5) движется вправо - к координате x прибавить единицу
-            //obstacles[i].X=field
-            //obstacles[i].X = obstacles[i].X - 1;
-            //}
+            if (obstacles[i].X === 1) {
+                step[i] = 1
+                //console.log("ifi", i, step)
+            }
+
+            obstacles[i].X += step[i];
+
         }
         obstacleSpeed = 0;
     }
 }
+
+// if (obstacles[i].X <= 0 || obstacles[i].X > field) {
+//obstacles[i].X=field;
+//1) движется вправо - к координате x прибавить единицу
+//2) коснулось бортика - поменять 1 на -1
+//3)влево движется - от координаты x отнять единицу
+//4) коснулось бортика - поменять -1 на 1
+//5) движется вправо - к координате x прибавить единицу
+//obstacles[i].X=field
+//obstacles[i].X = obstacles[i].X - 1;
+//}
 
 
 const setBonusPosition = () => {
@@ -206,9 +212,7 @@ const changeDirection = (e) => {
 };
 
 controls.forEach((key) => {
-    key.addEventListener("click", () =>
-        changeDirection({key: key.dataset.key})
-    );
+    key.addEventListener("click", () => changeDirection({key: key.dataset.key}));
 });
 /*
   Функция timer() запускает отсчет времени после начала игры
@@ -226,23 +230,18 @@ const render = () => {
     // первой создается голова змейки
     screen = `<div class="head" style="grid-area: ${snakeBody[0][1]} / ${snakeBody[0][0]}"></div>`;
     // к ней добавляется остальная часть, если она есть
-    for (let i = 1; i < snakeBody.length; i++)
-        screen += `<div class="head" style="grid-area: ${snakeBody[i][1]} / ${snakeBody[i][0]}"></div>`;
+    for (let i = 1; i < snakeBody.length; i++) screen += `<div class="head" style="grid-area: ${snakeBody[i][1]} / ${snakeBody[i][0]}"></div>`;
     // второй создается еда
     screen += `<div class="food" style="grid-area: ${foodY} / ${foodX}"></div>`;
     // третьим создается препятствие
-    for (let i = 0; i < obstacles.length; i++)
-        screen += `<div class="obstacle" style="grid-area: ${obstacles[i].Y} / ${obstacles[i].X}"></div>`;
+    for (let i = 0; i < obstacles.length; i++) screen += `<div class="obstacle" style="grid-area: ${obstacles[i].Y} / ${obstacles[i].X}"></div>`;
     // четвертым создается бонус, если он есть
-    if (isBonus && !isBonusEaten)
-        screen += `<div class="bonus" style="grid-area: ${bonusY} / ${bonusX}"></div>`;
+    if (isBonus && !isBonusEaten) screen += `<div class="bonus" style="grid-area: ${bonusY} / ${bonusX}"></div>`;
     // после  игрового поля создается табло
     scoreElement.innerHTML = `Score: ${score}`; // текущие очки
     leftToEatElement.innerHTML = `LeftToEat: ${leftToEat}`; // максимально возможный результат
     // остаток времени до окончания уровня
-    timeElement.innerHTML = `Time: ${millisecondsToMinutesAndSeconds(
-        levelTime - time < 0 ? 0 : levelTime - time
-    )}`;
+    timeElement.innerHTML = `Time: ${millisecondsToMinutesAndSeconds(levelTime - time < 0 ? 0 : levelTime - time)}`;
     levelElement.innerHTML = `Level: ${level}`; // текущий уровень
     // вывод созданного изображения на экран
     playBoard.innerHTML = !isLevelComplete ? screen : "";
@@ -261,11 +260,7 @@ const checkingRestrictions = () => {
     }
     // проверка соприкосновения змейки с самой собой
     for (let i = 0; i < snakeBody.length; i++) {
-        if (
-            i !== 0 &&
-            snakeBody[0][1] === snakeBody[i][1] &&
-            snakeBody[0][0] === snakeBody[i][0]
-        ) {
+        if (i !== 0 && snakeBody[0][1] === snakeBody[i][1] && snakeBody[0][0] === snakeBody[i][0]) {
             setEvent("game over", "contact with oneself");
         }
     }
@@ -327,11 +322,7 @@ const protocolExecutor = () => {
                 break;
             }
             clearInterval(setIntervalId);
-            alert(
-                `Level ${
-                    level - 1
-                } is complete! Congratulation! Well done! It's time to Level ${level}`
-            );
+            alert(`Level ${level - 1} is complete! Congratulation! Well done! It's time to Level ${level}`);
             isLevelComplete = false;
             snakeX = 5;
             snakeY = 10;
